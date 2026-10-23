@@ -12,10 +12,16 @@ baseline + numeric verification, no LLM).
 
 ## Contents
 
-- **[`backend/`](backend/)** — the engine and API. See [`backend/README.md`](backend/README.md)
-  for the module layout, how to run it (`uvicorn mmm_refresh.api:app`, then open
-  `http://localhost:8000/` for the mapping workspace + insights UI), the test
-  suite, and how to go live on Databricks via `.env` (`backend/.env.example`).
+- **[`backend/`](backend/)** — the engine and API (FastAPI). See
+  [`backend/README.md`](backend/README.md) for the module layout, how to run it
+  (`uvicorn mmm_refresh.api:app`, then open `http://localhost:8000/` for the
+  served mapping workspace + insights UI), the test suite, and how to go live on
+  Databricks via `.env` (`backend/.env.example`).
+- **[`frontend/`](frontend/)** — React + TypeScript (Vite) client for the same
+  UI, componentized, talking to the API. See [`frontend/README.md`](frontend/README.md)
+  (`npm install && npm run dev` → `http://localhost:5173`, with the backend on
+  `:8000`). The backend also serves a self-contained version at `/`, so the
+  React app is optional.
 
 ## Status
 
@@ -23,9 +29,10 @@ baseline + numeric verification, no LLM).
   detection), resolver (baseline + token similarity + confidence), transforms
   (normalize → Hill → Adstock → Lag), decomposition, reactive alignment engine,
   Databricks/ADLS datasource + Excel baseline store, FastAPI API, and a served
-  mapping-workspace + insights/ROI UI. 50 passing tests.
+  mapping-workspace + insights/ROI UI, and a React + TypeScript (Vite) front end.
+  50 passing backend tests; frontend builds clean.
 - Next: confirm live Databricks env/catalog/ADLS strings, real new-month CSV
-  upload + combined-decomp export, optional React/TS front end.
+  upload + combined-decomp export.
 
 > The original notebook was supplied as phone photos; those image folders are
 > intentionally excluded from the repo (they're reference material, not code).
