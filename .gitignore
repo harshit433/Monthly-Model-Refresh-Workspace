@@ -1,0 +1,26 @@
+# Reference material (large phone-photo sets of the original notebook) — not code
+Existing codebase/
+var and region examples/
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# Secrets / local config (keep .env.example, ignore the real one)
+.env
+**/.env
+
+# Baseline / output Excel artifacts
+*.xlsx
+baselines/
+**/baselines/
