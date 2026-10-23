@@ -1,0 +1,35 @@
+# Databricks Apps manifest. Deploy this `backend/` folder as a Databricks App;
+# it runs the FastAPI backend, which also serves the web UI at "/".
+command: ["uvicorn", "mmm_refresh.api:app", "--host", "0.0.0.0", "--port", "8000"]
+
+env:
+  # Turn on live mode (read from Databricks instead of the demo data).
+  - name: MMM_LIVE
+    value: "1"
+
+  # Catalog/schema that holds the secondary_modelling_* tables, PER ENVIRONMENT.
+  # Edit to match your workspace (include the env token wherever it belongs:
+  # a schema suffix like eki_refined_db_uat, or a 3-level catalog.schema).
+  - name: MMM_CATALOG_DEV
+    value: "eki_refined_db"
+  - name: MMM_CATALOG_UAT
+    value: "eki_refined_db"
+  - name: MMM_CATALOG_PROD
+    value: "eki_refined_db"
+
+  # ADLS base path per environment (for baseline Excel + outputs).
+  - name: MMM_ADLS_BASE_DEV
+    value: "dbfs:/mnt/mmmgen2devdatalake/Users_MMM/Harshit_Test"
+
+  # SQL warehouse HTTP path. Prefer declaring a SQL warehouse as an App resource
+  # (Databricks injects it); otherwise paste it from the warehouse's
+  # "Connection details". DATABRICKS_HOST is provided by Databricks Apps, and the
+  # app's service principal is used for auth automatically (no PAT needed) as long
+  # as databricks-sdk is installed. To use a Personal Access Token instead, add a
+  # secret and reference it as DATABRICKS_TOKEN via valueFrom.
+  - name: DATABRICKS_HTTP_PATH
+    value: "/sql/1.0/warehouses/REPLACE_WITH_WAREHOUSE_ID"
+
+  # Where baseline Excel files are read/written (a workspace/Volume/DBFS path).
+  - name: MMM_BASELINE_DIR
+    value: "/Workspace/Shared/mmm_refresh/baselines"

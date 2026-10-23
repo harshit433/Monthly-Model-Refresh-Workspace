@@ -57,6 +57,10 @@ def create_app(service: SessionService | None = None) -> FastAPI:
     def environments():
         return [{"name": e.name, "catalog": e.catalog} for e in ENVIRONMENTS.values()]
 
+    @app.get("/bmcs")
+    def bmcs(env: str):
+        return {"bmcs": svc.list_bmcs(env)}
+
     @app.get("/refreshes")
     def refreshes(env: str, bmc: str):
         return {"refreshes": svc.list_refreshes(env, bmc)}

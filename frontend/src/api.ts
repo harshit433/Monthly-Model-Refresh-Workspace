@@ -12,6 +12,10 @@ async function j<T>(url: string, opts?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  environments: () => j<Array<{ name: string; catalog: string }>>("/environments"),
+  bmcs: (env: string) => j<{ bmcs: string[] }>(`/bmcs?env=${encodeURIComponent(env)}`),
+  refreshes: (env: string, bmc: string) =>
+    j<{ refreshes: string[] }>(`/refreshes?env=${encodeURIComponent(env)}&bmc=${encodeURIComponent(bmc)}`),
   createSession: (body: { env: string; bmc: string; refresh: string }) =>
     j<Summary>("/sessions", { method: "POST", body: JSON.stringify(body) }),
   getSummary: (id: string) => j<Summary>(`/sessions/${id}`),

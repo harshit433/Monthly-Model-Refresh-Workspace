@@ -174,7 +174,16 @@
 </style>
 </head>
 <body>
-<div class="overlay" id="overlay"><div class="spin"></div><div id="overlayMsg">Loading session…</div></div>
+<div class="overlay" id="overlay">
+  <div class="card" style="width:min(420px,92vw);display:flex;flex-direction:column;gap:12px">
+    <h3 style="font-size:15px">Open a mapping workspace</h3>
+    <div class="fld"><label>Environment</label><select id="pEnv" style="width:100%"></select></div>
+    <div class="fld"><label>Brand · Market (BMC)</label><select id="pBmc" style="width:100%"></select></div>
+    <div class="fld"><label>Model refresh</label><select id="pRefresh" style="width:100%"></select></div>
+    <div id="pErr" style="color:var(--bad);font-size:12px;min-height:14px"></div>
+    <button class="commit" id="pOpen" style="width:100%;justify-content:center">Open workspace</button>
+  </div>
+</div>
 <div class="wrap" id="app" style="display:none">
   <header class="bar">
     <div class="brand">
@@ -276,21 +285,44 @@
 
   function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},1900);}
 
-  async function boot(){
+  var $=function(id){return document.getElementById(id);};
+  function opts(arr){return (arr&&arr.length?arr:[""]).map(function(v){return '<option value="'+v.replace(/"/g,'&quot;')+'">'+(v||'(none)')+'</option>';}).join('');}
+  async function populateEnvs(){
+    try{ var envs=await jget("/environments");
+      $('pEnv').innerHTML=envs.map(function(e){return '<option value="'+e.name+'">'+e.name.toUpperCase()+'</option>';}).join('');
+    }catch(e){ $('pErr').innerHTML="Can’t reach the backend. Make sure the app is running. ("+e.message+")"; return; }
+    await populateBmcs();
+  }
+  async function populateBmcs(){
+    $('pBmc').innerHTML='<option>loading…</option>'; $('pErr').textContent='';
+    try{ var r=await jget("/bmcs?env="+encodeURIComponent($('pEnv').value)); $('pBmc').innerHTML=opts(r.bmcs); }
+    catch(e){ $('pBmc').innerHTML='<option value="">(error)</option>'; }
+    await populateRefreshes();
+  }
+  async function populateRefreshes(){
+    $('pRefresh').innerHTML='<option>loading…</option>';
+    try{ var r=await jget("/refreshes?env="+encodeURIComponent($('pEnv').value)+"&bmc="+encodeURIComponent($('pBmc').value)); $('pRefresh').innerHTML=opts(r.refreshes); }
+    catch(e){ $('pRefresh').innerHTML='<option value="">(error)</option>'; }
+  }
+  async function openWorkspace(){
+    var env=$('pEnv').value, bmc=$('pBmc').value, refresh=$('pRefresh').value;
+    if(!bmc||!refresh){ $('pErr').textContent='Pick a BMC and a refresh.'; return; }
+    $('pOpen').textContent='Opening…'; $('pErr').textContent='';
     try{
-      var sum=await jpost("/sessions",{env:"dev",bmc:"Brazil_Centrum",refresh:"2025 Q3 Refresh"});
-      SESSION=sum.id;ANALYSIS=sum.analysis;DOMAIN_COUNTS={};
-      document.getElementById('hBmc').textContent=sum.bmc.replace("_"," · ");
-      document.getElementById('hRefresh').textContent=sum.refresh;
-      document.getElementById('hEnv').textContent=(sum.env||"dev").toUpperCase();
+      var sum=await jpost("/sessions",{env:env,bmc:bmc,refresh:refresh});
+      SESSION=sum.id;ANALYSIS=sum.analysis;DOMAIN_COUNTS={};INSIGHTS=null;
+      $('hBmc').textContent=sum.bmc.replace("_"," · ");
+      $('hRefresh').textContent=sum.refresh;
+      $('hEnv').textContent=(sum.env||env).toUpperCase();
       Object.keys(sum.domains).forEach(function(d){DOMAIN_COUNTS[d]=sum.domains[d].total;});
-      if(Object.keys(DOMAIN_COUNTS).indexOf(DOMAIN)<0)DOMAIN=Object.keys(DOMAIN_COUNTS)[0];
+      DOMAIN=Object.keys(DOMAIN_COUNTS).indexOf(DOMAIN)>=0?DOMAIN:Object.keys(DOMAIN_COUNTS)[0];
       await loadDomain(DOMAIN);
-      document.getElementById('overlay').style.display="none";
-      document.getElementById('app').style.display="flex";
-    }catch(e){
-      document.getElementById('overlayMsg').innerHTML="Couldn’t reach the backend.<br><span style='font-size:12px'>Run <code>uvicorn mmm_refresh.api:app</code> and open this page from it. ("+e.message+")</span>";
-    }
+      $('overlay').style.display="none"; $('app').style.display="flex";
+    }catch(e){ $('pErr').textContent='Could not open: '+e.message; $('pOpen').textContent='Open workspace'; }
+  }
+  function initPicker(){
+    $('pEnv').onchange=populateBmcs; $('pBmc').onchange=populateRefreshes; $('pOpen').onclick=openWorkspace;
+    populateEnvs();
   }
   async function loadDomain(d){DOMAIN=d;var m=await jget("/sessions/"+SESSION+"/mapping/"+d);ROWS=m.proposals.map(adapt);state.expanded={};rerender();}
   async function pushAndAnalyze(){var res=await jpatch("/sessions/"+SESSION+"/mapping/"+DOMAIN,{proposals:ROWS.map(rowToProposal)});ANALYSIS=res.analysis;INSIGHTS=null;renderAlign();}
@@ -533,7 +565,7 @@
   document.querySelectorAll('thead th[data-sort]').forEach(function(th){th.addEventListener('click',function(){var k=th.getAttribute('data-sort');state.sort=k==="conf"?(state.sort==="conf-desc"?"conf-asc":"conf-desc"):(k==="status"?"status":k==="name"?"name":"type");var sel=document.getElementById('sort');if(["conf-asc","conf-desc","status","name"].indexOf(state.sort)>=0)sel.value=state.sort;renderRows();});});
 
   function rerender(){renderTabs();renderSummary();renderChips();renderRows();}
-  boot();
+  initPicker();
 })();
 </script>
 </body>

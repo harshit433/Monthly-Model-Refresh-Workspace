@@ -213,6 +213,10 @@ class SessionService:
         self.baseline = baseline_store or NoBaselineStore()
         self.sessions: dict[str, MappingSession] = {}
 
+    def list_bmcs(self, env: str) -> list[str]:
+        src = self.source_for_env(env)
+        return src.list_bmcs(env) if hasattr(src, "list_bmcs") else []
+
     def list_refreshes(self, env: str, bmc: str) -> list[str]:
         return self.source_for_env(env).list_refreshes(bmc)
 

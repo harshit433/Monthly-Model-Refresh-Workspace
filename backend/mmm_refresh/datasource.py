@@ -80,6 +80,9 @@ class InMemorySource:
     def put(self, bmc: str, refresh: str, data: LoadedData) -> None:
         self._data[(bmc, refresh)] = data
 
+    def list_bmcs(self, env: str | None = None) -> list[str]:
+        return sorted({b for (b, _r) in self._data})
+
     def list_refreshes(self, bmc: str) -> list[str]:
         return sorted({r for (b, r) in self._data if b == bmc})
 
@@ -106,10 +109,27 @@ class DatabricksSource:
             from databricks import sql  # type: ignore
         except ImportError as e:  # pragma: no cover
             raise RuntimeError("databricks-sql-connector is required for DatabricksSource") from e
-        if not (self.env.server_hostname and self.env.http_path):
-            raise RuntimeError(f"env {self.env.name!r} has no SQL warehouse configured")
-        return sql.connect(server_hostname=self.env.server_hostname,
-                           http_path=self.env.http_path, access_token=self.token)
+        host, http = self.env.server_hostname, self.env.http_path
+        if not (host and http):
+            raise RuntimeError(f"env {self.env.name!r} has no SQL warehouse configured "
+                               "(set DATABRICKS_HTTP_PATH and DATABRICKS_HOST/SERVER_HOSTNAME)")
+        if self.token:
+            return sql.connect(server_hostname=host, http_path=http, access_token=self.token)
+        # No PAT: use the Databricks SDK credentials (e.g. a Databricks App's
+        # service principal, or the local CLI profile). Needs databricks-sdk.
+        try:  # pragma: no cover - needs cluster/app
+            from databricks.sdk.core import Config
+            cfg = Config(host=f"https://{host}")
+            return sql.connect(server_hostname=host, http_path=http,
+                               credentials_provider=lambda: cfg.authenticate)
+        except Exception as e:  # pragma: no cover
+            raise RuntimeError("no DATABRICKS_TOKEN set and SDK auth is unavailable; "
+                               "set a token or install databricks-sdk") from e
+
+    def list_bmcs(self, env: str | None = None) -> list[str]:  # pragma: no cover - needs cluster
+        with self._connect() as conn:
+            rows = self._query(conn, f"SELECT DISTINCT bmc FROM {self.env.table('avm')}")
+        return sorted(str(r["bmc"]) for r in rows if r["bmc"] is not None)
 
     def _query(self, conn, sql_text: str) -> list[dict]:
         cur = conn.cursor()

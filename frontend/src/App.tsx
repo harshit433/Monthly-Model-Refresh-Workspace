@@ -1,21 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { api } from "./api";
 import { Header } from "./components/Header";
 import { Insights } from "./components/Insights";
 import { MappingTable } from "./components/MappingTable";
 import { SplitEditor } from "./components/SplitEditor";
+import { StartScreen } from "./components/StartScreen";
 import { SummaryTiles } from "./components/SummaryTiles";
 import { Toolbar } from "./components/Toolbar";
 import { useTheme } from "./theme";
 import type { Analysis, Insights as InsightsData, Proposal, Summary } from "./types";
 import { dedupConflicts, DOMAIN_LABEL } from "./util";
 
-const BOOT = { env: "dev", bmc: "Brazil_Centrum", refresh: "2025 Q3 Refresh" };
-
 export default function App() {
   const { dark, toggle } = useTheme();
   const [summary, setSummary] = useState<Summary | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [domain, setDomain] = useState("raw_to_processed");
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
@@ -33,21 +31,15 @@ export default function App() {
 
   function flash(m: string) { setToast(m); setTimeout(() => setToast(null), 1900); }
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const s = await api.createSession(BOOT);
-        setSummary(s);
-        setAnalysis(s.analysis);
-        const dom = Object.keys(s.domains)[0] || "raw_to_processed";
-        setDomain(dom);
-        const m = await api.getMapping(s.id, dom);
-        setProposals(m.proposals);
-      } catch (e: any) {
-        setError(e.message || String(e));
-      }
-    })();
-  }, []);
+  async function handleOpen(env: string, bmc: string, refresh: string) {
+    const s = await api.createSession({ env, bmc, refresh });
+    setSummary(s);
+    setAnalysis(s.analysis);
+    const dom = Object.keys(s.domains)[0] || "raw_to_processed";
+    setDomain(dom);
+    const m = await api.getMapping(s.id, dom);
+    setProposals(m.proposals);
+  }
 
   async function loadDomain(id: string, dom: string) {
     setDomain(dom);
@@ -109,15 +101,7 @@ export default function App() {
   const onEditSave = (i: number, np: Proposal) => { setEditing(null); pushAndAnalyze(proposals.map((p, j) => j === i ? np : p)); flash("Mapping updated"); };
   const onToggle = (i: number) => setExpanded((e) => ({ ...e, [i]: !e[i] }));
 
-  if (error) return (
-    <div className="overlay">
-      <div style={{ fontWeight: 700 }}>Couldn’t reach the backend.</div>
-      <div style={{ fontSize: 12, maxWidth: 420, textAlign: "center" }}>
-        Start it with <code>uvicorn mmm_refresh.api:app</code> on :8000, then reload. ({error})
-      </div>
-    </div>
-  );
-  if (!summary) return <div className="overlay"><div className="spin" /><div>Loading session…</div></div>;
+  if (!summary) return <StartScreen onOpen={handleOpen} />;
 
   const wd = analysis?.weekly_deviation;
   const mm = analysis?.unaligned.mismatch.length ?? 0;

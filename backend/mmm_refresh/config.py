@@ -55,6 +55,14 @@ def _ov(env: str, key: str, default):
     return os.environ.get(f"MMM_{key}_{env.upper()}") or os.environ.get(f"MMM_{key}") or default
 
 
+def _host_from_env():
+    """Derive the SQL hostname from DATABRICKS_HOST (set by Databricks Apps)."""
+    h = os.environ.get("DATABRICKS_HOST")
+    if not h:
+        return None
+    return h.replace("https://", "").replace("http://", "").rstrip("/")
+
+
 def get_env(name: str) -> EnvConfig:
     key = (name or "").lower()
     if key not in ENVIRONMENTS:
@@ -65,7 +73,8 @@ def get_env(name: str) -> EnvConfig:
         catalog=_ov(key, "CATALOG", base.catalog),
         adls_base=_ov(key, "ADLS_BASE", base.adls_base),
         server_hostname=_ov(key, "DBX_HOST", base.server_hostname)
-                        or os.environ.get("DATABRICKS_SERVER_HOSTNAME"),
+                        or os.environ.get("DATABRICKS_SERVER_HOSTNAME")
+                        or _host_from_env(),
         http_path=_ov(key, "DBX_HTTP", base.http_path)
                   or os.environ.get("DATABRICKS_HTTP_PATH"),
     )

@@ -10,6 +10,12 @@ time, decomposes contribution, and extends the model forward by one month —
 with the mapping automated as far as possible (deterministic token similarity +
 baseline + numeric verification, no LLM).
 
+## Running it
+
+**No Node required** — the backend serves the whole UI at `/`. See
+**[DEPLOY.md](DEPLOY.md)** for the options: deploy as a **Databricks App**
+(recommended, nothing to install), run `uvicorn` on your laptop, or try the demo.
+
 ## Contents
 
 - **[`backend/`](backend/)** — the engine and API (FastAPI). See
